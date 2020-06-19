@@ -13,7 +13,6 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.camera.core.ImageCapture
 import com.ktvipin.cameraxsample.AnimationUtils.startBlinkAnimation
 import com.ktvipin.cameraxsample.AnimationUtils.startRotateAnimation
 import com.ktvipin.cameraxsample.AnimationUtils.startScaleAnimation
@@ -27,19 +26,21 @@ class ControlView : LinearLayout {
 
     interface Listener {
         fun toggleCamera()
-        fun toggleFlash(flashMode: Int)
+        fun toggleFlash(flashMode: FlashMode)
         fun startVideoCapturing()
         fun stopVideoCapturing()
         fun capturePhoto()
     }
 
-    private var isVideoCapturing: Boolean = false
-    private var mFlashMode: Int = ImageCapture.FLASH_MODE_OFF
-    private var listener: Listener? = null
-
-    fun setListener(listener: Listener?) {
-        this.listener = listener
+    enum class FlashMode {
+        FLASH_MODE_AUTO,
+        FLASH_MODE_ON,
+        FLASH_MODE_OFF
     }
+
+    private var isVideoCapturing: Boolean = false
+    private var flashMode: FlashMode = FlashMode.FLASH_MODE_OFF
+    private var listener: Listener? = null
 
     private var startHTime = 0L
     private var timerHandler = Handler()
@@ -85,12 +86,13 @@ class ControlView : LinearLayout {
     }.also { addView(it) }
 
     private val ivFlash = ImageView(context).apply {
-        layoutParams = LayoutParams(24.px, 24.px).apply {
+        layoutParams = LayoutParams(48.px, 48.px).apply {
             setImageResource(R.drawable.ic_flash_off_white_20dp)
             //setMargins(leftMargin, topMargin, 5.px, bottomMargin)
             gravity = Gravity.CENTER
         }
         setOnClickListener { toggleFlash() }
+        setPadding(12.px, 12.px, 12.px, 12.px)
     }.also { layoutControls.addView(it) }
 
     private val ivCapture = ImageView(context).apply {
@@ -104,8 +106,8 @@ class ControlView : LinearLayout {
         layoutControls.addView(it)
     }
 
-    private val ivSwapCam = ImageView(context).apply {
-        layoutParams = LayoutParams(24.px, 24.px).apply {
+    private val ivSwitchCam = ImageView(context).apply {
+        layoutParams = LayoutParams(48.px, 48.px).apply {
             setImageResource(R.drawable.ic_camera_swap_fill_white_24dp)
             //setMargins(leftMargin, topMargin, 5.px, bottomMargin)
             gravity = Gravity.CENTER
@@ -113,6 +115,7 @@ class ControlView : LinearLayout {
                 startRotateAnimation(it)
                 listener?.toggleCamera()
             }
+            setPadding(12.px, 12.px, 12.px, 12.px)
         }
     }.also { layoutControls.addView(it) }
 
@@ -134,29 +137,28 @@ class ControlView : LinearLayout {
         defStyleAttr
     ) {
         setPadding(16.px, 16.px, 16.px, 16.px)
-        setBackgroundColor(Color.BLUE)
+        setBackgroundColor(Color.TRANSPARENT)
         gravity = Gravity.CENTER
         orientation = VERTICAL
     }
 
     private fun toggleFlash() {
-        when (mFlashMode) {
-            ImageCapture.FLASH_MODE_OFF -> {
-                mFlashMode = ImageCapture.FLASH_MODE_ON
-                ivFlash.setImageResource(R.drawable.ic_flash_on_white_20dp)
-            }
-            ImageCapture.FLASH_MODE_ON -> {
-                mFlashMode = ImageCapture.FLASH_MODE_AUTO
-                ivFlash.setImageResource(R.drawable.ic_flash_auto_white_20dp)
-            }
-            ImageCapture.FLASH_MODE_AUTO -> {
-                mFlashMode = ImageCapture.FLASH_MODE_OFF
+        when (flashMode) {
+            FlashMode.FLASH_MODE_AUTO -> {
+                flashMode = FlashMode.FLASH_MODE_OFF
                 ivFlash.setImageResource(R.drawable.ic_flash_off_white_20dp)
             }
+            FlashMode.FLASH_MODE_ON -> {
+                flashMode = FlashMode.FLASH_MODE_AUTO
+                ivFlash.setImageResource(R.drawable.ic_flash_auto_white_20dp)
+            }
+            FlashMode.FLASH_MODE_OFF -> {
+                flashMode = FlashMode.FLASH_MODE_ON
+                ivFlash.setImageResource(R.drawable.ic_flash_on_white_20dp)
+            }
         }
-        listener?.toggleFlash(mFlashMode)
+        listener?.toggleFlash(flashMode)
     }
-
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupCaptureButtonListener(capture: ImageView) {
@@ -215,7 +217,6 @@ class ControlView : LinearLayout {
         }
     }
 
-
     private fun startVideoCapturing() {
         ivCapture.performHapticFeedback(ivCapture.id)
         isVideoCapturing = true
@@ -244,14 +245,22 @@ class ControlView : LinearLayout {
         )
     }
 
+    fun setFlashViewVisibility(visibility: Boolean) {
+        ivFlash.visibility = if (visibility) View.VISIBLE else View.INVISIBLE
+    }
+
+    fun setCameraSwitchVisibility(visibility: Boolean) {
+        ivSwitchCam.visibility = if (visibility) View.VISIBLE else View.INVISIBLE
+    }
+
+    fun setListener(listener: Listener?) {
+        this.listener = listener
+    }
+
     companion object {
-        private const val TAG = "CameraFragment"
-        private const val RATIO_4_3_VALUE = 4.0 / 3.0
-        private const val RATIO_16_9_VALUE = 16.0 / 9.0
         private const val DELAY_MILLIS = 1000L
         private const val SCALE_UP = 1.5f
         private const val SCALE_DOWN = 1.0f
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private const val NO_FLASH = -1111
     }
 }
