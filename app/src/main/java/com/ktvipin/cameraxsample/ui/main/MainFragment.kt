@@ -1,5 +1,6 @@
 package com.ktvipin.cameraxsample.ui.main
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
@@ -10,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import androidx.camera.core.*
+import androidx.camera.core.impl.VideoCaptureConfig
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.net.toFile
@@ -30,16 +32,15 @@ class MainFragment : Fragment(), ControlView.Listener {
         fun newInstance() = MainFragment()
     }
 
-
     /** Blocking camera operations are performed using this executor */
     private val cameraExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
-
     private var cameraProvider: ProcessCameraProvider? = null
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private var flashMode: Int = ImageCapture.FLASH_MODE_OFF
     private var hasFlashUnit = false
     private lateinit var outputDirectory: File
     private lateinit var imageCapture: ImageCapture
+    private lateinit var videoCapture: VideoCapture
 
 
     override fun onCreateView(
@@ -86,14 +87,12 @@ class MainFragment : Fragment(), ControlView.Listener {
     }
 
     /** Declare and bind preview, capture and analysis use cases */
+    @SuppressLint("RestrictedApi")
     private fun bindCameraUseCases() {
 
         // Get screen metrics used to setup camera for full screen resolution
         val screenAspectRatio = DisplayMetrics().aspectRatio()
         val rotation = previewView.display.rotation
-        // CameraProvider
-        val cameraProvider = cameraProvider
-            ?: throw IllegalStateException("Camera initialization failed.")
 
         // CameraSelector
         val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
@@ -118,39 +117,27 @@ class MainFragment : Fragment(), ControlView.Listener {
             .setFlashMode(flashMode)
             .build()
 
-        // ImageAnalysis
-        val imageAnalyzer = ImageAnalysis.Builder()
-            // We request aspect ratio but no resolution
-            .setTargetAspectRatio(screenAspectRatio)
-            // Set initial target rotation, we will have to call this again if rotation changes
-            // during the lifecycle of this use case
-            .setTargetRotation(rotation)
-            .build()
-            // The analyzer can then be assigned to the instance
-            .also {
-                it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
-                    // Values returned from our analyzer are passed to the attached listener
-                    // We log image analysis results here - you should do something useful
-                    // instead!
-                    //Log.d(TAG, "Average luminosity: $luma")
-                })
-            }
+        //Video Capture
+        videoCapture = VideoCaptureConfig.Builder().apply {
+            setTargetRotation(rotation)
+            setTargetAspectRatio(screenAspectRatio)
+        }.build()
 
         // Must unbind the use-cases before rebinding them
-        cameraProvider.unbindAll()
+        cameraProvider?.unbindAll()
 
         try {
             // A variable number of use-cases can be passed here -
             // camera provides access to CameraControl & CameraInfo
-            cameraProvider.bindToLifecycle(
-                this, cameraSelector, preview, imageCapture, imageAnalyzer
+            cameraProvider?.bindToLifecycle(
+                this, cameraSelector, preview, imageCapture, videoCapture
             ).also {
-                hasFlashUnit = it.cameraInfo.hasFlashUnit()
+                hasFlashUnit = it?.cameraInfo?.hasFlashUnit() ?: false
             }
             // Attach the viewfinder's surface provider to preview use case
             preview.setSurfaceProvider(previewView.createSurfaceProvider())
         } catch (exc: Exception) {
-            //Log.e(TAG, "Use case binding failed", exc)
+            toast("Use case binding failed")
         }
     }
 
@@ -179,9 +166,7 @@ class MainFragment : Fragment(), ControlView.Listener {
 
     override fun capturePhoto() {
         // Create timestamped output file to hold the image
-        val fileName = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
-            .format(System.currentTimeMillis()) + ".jpg"
-        val photoFile = File(outputDirectory, fileName)
+        val photoFile = getFile(".jpg")
 
         // Setup image capture metadata
         val metadata = ImageCapture.Metadata().apply {
@@ -199,18 +184,24 @@ class MainFragment : Fragment(), ControlView.Listener {
         // Setup image capture listener which is triggered after photo has been taken
         val imageSavedCallback = object : ImageCapture.OnImageSavedCallback {
             override fun onError(exc: ImageCaptureException) {
-                showToast("Photo capture failed: ${exc.message}")
+                toast("Photo capture failed: ${exc.message}")
             }
 
             override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                 val savedUri = output.savedUri ?: Uri.fromFile(photoFile)
-                showToast("Photo capture succeeded: $savedUri")
+                toast("Photo capture succeeded: $savedUri")
 
                 scanFile(savedUri)
             }
         }
 
         imageCapture.takePicture(outputOptions, cameraExecutor, imageSavedCallback)
+    }
+
+    private fun getFile(fileExtension: String): File {
+        val fileName = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
+            .format(System.currentTimeMillis()) + fileExtension
+        return File(outputDirectory, fileName)
     }
 
     private fun scanFile(savedUri: Uri) {
@@ -228,12 +219,31 @@ class MainFragment : Fragment(), ControlView.Listener {
         }
     }
 
+    @SuppressLint("RestrictedApi")
     override fun startVideoCapturing() {
-        TODO("Not yet implemented")
+        // Create timestamped output file to hold the video
+        val videoFile = getFile(".mp4")
+        videoCapture.startRecording(
+            videoFile,
+            cameraExecutor,
+            object : VideoCapture.OnVideoSavedCallback {
+                override fun onVideoSaved(file: File) {
+                    val savedUri = Uri.fromFile(file)
+                    toast("Photo capture succeeded: $savedUri")
+
+                    scanFile(savedUri)
+                }
+
+                override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
+                    toast("Video capture failed: ${cause?.message}")
+                }
+
+            })
     }
 
+    @SuppressLint("RestrictedApi")
     override fun stopVideoCapturing() {
-        TODO("Not yet implemented")
+        videoCapture.stopRecording()
     }
 
     private fun getOutputDirectory(context: Context): File {

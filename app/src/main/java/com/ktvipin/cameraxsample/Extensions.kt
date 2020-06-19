@@ -41,7 +41,7 @@ fun DisplayMetrics.aspectRatio(): Int {
     return androidx.camera.core.AspectRatio.RATIO_16_9
 }
 
-fun Fragment.showToast(message: String) {
+fun Fragment.toast(message: String) {
     requireActivity().runOnUiThread {
         Toast.makeText(
             requireContext(),
