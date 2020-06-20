@@ -283,11 +283,15 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
         // Create timestamped output file to hold the video
         val videoFile = getFile(outputDirectory, ".mp4")
         videoCapture.startRecording(videoFile, cameraExecutor, VideoSavedCallback())
+        controlView.setCameraSwitchVisibility(false)
+        controlView.setFlashViewVisibility(false)
     }
 
     @SuppressLint("RestrictedApi")
     override fun stopVideoCapturing() {
         videoCapture.stopRecording()
+        controlView.setFlashViewVisibility(hasFlashUnit)
+        controlView.setCameraSwitchVisibility(cameraProvider.hasBackCamera && cameraProvider.hasFrontCamera)
     }
 
 }
