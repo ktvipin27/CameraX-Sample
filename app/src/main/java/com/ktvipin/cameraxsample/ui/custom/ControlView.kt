@@ -49,6 +49,7 @@ class ControlView : LinearLayout {
     private val timerView = TimerView(context)
         .apply {
             layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            visibility = View.INVISIBLE
         }.also { addView(it) }
 
     private val layoutControls = LinearLayout(context).apply {
@@ -65,6 +66,7 @@ class ControlView : LinearLayout {
         }
         setOnClickListener { toggleFlash() }
         setPadding(12.px, 12.px, 12.px, 12.px)
+        visibility = View.INVISIBLE
     }.also { layoutControls.addView(it) }
 
     private val ivCapture = ImageView(context).apply {
@@ -88,6 +90,7 @@ class ControlView : LinearLayout {
                 listener?.toggleCamera()
             }
             setPadding(12.px, 12.px, 12.px, 12.px)
+            visibility = View.INVISIBLE
         }
     }.also { layoutControls.addView(it) }
 

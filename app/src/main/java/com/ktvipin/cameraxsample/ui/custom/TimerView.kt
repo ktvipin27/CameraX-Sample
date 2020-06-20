@@ -59,7 +59,6 @@ class TimerView : LinearLayout {
         background = context.getDrawable(R.drawable.bg_rounded_corner_gray)
         gravity = Gravity.CENTER
         setPadding(5.px, 2.px, 5.px, 2.px)
-        visibility = View.INVISIBLE
     }
 
     fun startTimer() {

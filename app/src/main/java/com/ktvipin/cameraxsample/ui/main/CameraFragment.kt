@@ -30,7 +30,7 @@ import java.util.concurrent.Executors
 class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener {
 
     /** Blocking camera operations are performed using this executor */
-    private val cameraExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
+    private lateinit var cameraExecutor: ExecutorService
     private val displayManager by lazy {
         requireContext().getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
     }
@@ -105,6 +105,9 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Initialize our background executor
+        cameraExecutor = Executors.newSingleThreadExecutor()
+
         outputDirectory = getOutputDirectory(requireContext())
         previewView.post {
             displayId = previewView.display.displayId
@@ -126,26 +129,26 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
 
     /** Initialize CameraX, and prepare to bind the camera use cases  */
     private fun setUpCamera() {
-        ProcessCameraProvider
+        cameraProvider = ProcessCameraProvider
             .getInstance(requireContext())
-            .apply {
-                cameraProvider = get()
+            .also {
+                it.addListener(Runnable {
+                    // Select lensFacing depending on the available cameras
+                    lensFacing = when {
+                        cameraProvider.hasBackCamera -> CameraSelector.LENS_FACING_BACK
+                        cameraProvider.hasFrontCamera -> CameraSelector.LENS_FACING_FRONT
+                        else -> throw IllegalStateException("Back and front camera are unavailable")
+                    }
+
+                    // Build and bind the camera use cases
+                    bindCameraUseCases()
+
+                    controlView.setFlashViewVisibility(hasFlashUnit)
+                    controlView.setCameraSwitchVisibility(cameraProvider.hasBackCamera && cameraProvider.hasFrontCamera)
+
+                }, ContextCompat.getMainExecutor(requireContext()))
             }
-            .addListener(Runnable {
-                // Select lensFacing depending on the available cameras
-                lensFacing = when {
-                    cameraProvider.hasBackCamera -> CameraSelector.LENS_FACING_BACK
-                    cameraProvider.hasFrontCamera -> CameraSelector.LENS_FACING_FRONT
-                    else -> throw IllegalStateException("Back and front camera are unavailable")
-                }
-
-                // Build and bind the camera use cases
-                bindCameraUseCases()
-
-                controlView.setFlashViewVisibility(hasFlashUnit)
-                controlView.setCameraSwitchVisibility(cameraProvider.hasBackCamera && cameraProvider.hasFrontCamera)
-
-            }, ContextCompat.getMainExecutor(requireContext()))
+            .get()
     }
 
     /** Declare and bind preview, capture and analysis use cases */
