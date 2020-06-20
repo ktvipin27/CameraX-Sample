@@ -12,6 +12,7 @@ import androidx.camera.core.impl.VideoCaptureConfig
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import com.ktvipin.cameraxsample.R
 import com.ktvipin.cameraxsample.ui.custom.ControlView
 import com.ktvipin.cameraxsample.utils.FileUtils.getFile
@@ -27,10 +28,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener {
-
-    companion object {
-        fun newInstance() = CameraFragment()
-    }
 
     /** Blocking camera operations are performed using this executor */
     private val cameraExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
@@ -60,8 +57,10 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
         override fun onImageSaved(output: ImageCapture.OutputFileResults) {
             val savedUri = output.savedUri ?: Uri.fromFile(photoFile)
             toast("Photo capture succeeded: $savedUri")
-
             scanFile(requireContext(), savedUri)
+
+            findNavController()
+                .navigate(CameraFragmentDirections.actionCameraFragmentToPreviewFragment(savedUri))
         }
     }
 
@@ -74,6 +73,9 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
             val savedUri = Uri.fromFile(file)
             toast("Video capture succeeded: $savedUri")
             scanFile(requireContext(), savedUri)
+
+            findNavController()
+                .navigate(CameraFragmentDirections.actionCameraFragmentToPreviewFragment(savedUri))
         }
 
         override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
