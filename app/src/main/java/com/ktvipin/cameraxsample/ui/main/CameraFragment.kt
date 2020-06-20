@@ -22,6 +22,7 @@ import com.ktvipin.cameraxsample.R
 import com.ktvipin.cameraxsample.ui.KEY_EVENT_ACTION
 import com.ktvipin.cameraxsample.ui.KEY_EVENT_EXTRA
 import com.ktvipin.cameraxsample.ui.custom.ControlView
+import com.ktvipin.cameraxsample.ui.permission.PermissionFragment
 import com.ktvipin.cameraxsample.utils.FileUtils.getFile
 import com.ktvipin.cameraxsample.utils.FileUtils.getOutputDirectory
 import com.ktvipin.cameraxsample.utils.FileUtils.scanFile
@@ -164,6 +165,14 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
         displayManager.unregisterDisplayListener(displayListener)
         // Unregister the broadcast receivers and listeners
         broadcastManager.unregisterReceiver(volumeDownReceiver)
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        if (!PermissionFragment.hasPermissions(requireContext())) {
+            findNavController().navigate(CameraFragmentDirections.actionCameraFragmentToPermissionFragment())
+        }
     }
 
     /** Initialize CameraX, and prepare to bind the camera use cases  */
