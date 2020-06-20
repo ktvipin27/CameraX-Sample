@@ -1,19 +1,26 @@
 package com.ktvipin.cameraxsample.ui.main
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.DisplayMetrics
+import android.view.KeyEvent
 import android.view.View
 import androidx.camera.core.*
 import androidx.camera.core.impl.VideoCaptureConfig
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.fragment.findNavController
 import com.ktvipin.cameraxsample.R
+import com.ktvipin.cameraxsample.ui.KEY_EVENT_ACTION
+import com.ktvipin.cameraxsample.ui.KEY_EVENT_EXTRA
 import com.ktvipin.cameraxsample.ui.custom.ControlView
 import com.ktvipin.cameraxsample.utils.FileUtils.getFile
 import com.ktvipin.cameraxsample.utils.FileUtils.getOutputDirectory
@@ -39,8 +46,10 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
     private var flashMode: Int = ImageCapture.FLASH_MODE_OFF
     private var hasFlashUnit = false
     private lateinit var outputDirectory: File
+    private var camera: Camera? = null
     private lateinit var imageCapture: ImageCapture
     private lateinit var videoCapture: VideoCapture
+    private lateinit var broadcastManager: LocalBroadcastManager
     private var displayId: Int = -1
 
     /**
@@ -102,6 +111,28 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
         } ?: Unit
     }
 
+    /** Volume down button receiver used to trigger shutter */
+    private val volumeDownReceiver = object : BroadcastReceiver() {
+        private var linearZoom = 0f
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.getIntExtra(KEY_EVENT_EXTRA, KeyEvent.KEYCODE_UNKNOWN)) {
+                // When the volume down button is pressed, simulate a shutter button click
+                KeyEvent.KEYCODE_VOLUME_UP -> {
+                    if (linearZoom <= 0.9) {
+                        linearZoom += 0.1f
+                    }
+                    camera?.cameraControl?.setLinearZoom(linearZoom)
+                }
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    if (linearZoom >= 0.1) {
+                        linearZoom -= 0.1f
+                    }
+                    camera?.cameraControl?.setLinearZoom(linearZoom)
+                }
+            }
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -118,6 +149,12 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
 
         // Every time the orientation of device changes, update rotation for use cases
         displayManager.registerDisplayListener(displayListener, null)
+
+        broadcastManager = LocalBroadcastManager.getInstance(view.context)
+
+        // Set up the intent filter that will receive events from our main activity
+        val filter = IntentFilter().apply { addAction(KEY_EVENT_ACTION) }
+        broadcastManager.registerReceiver(volumeDownReceiver, filter)
     }
 
     override fun onDestroyView() {
@@ -125,6 +162,8 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
         // Shut down our background executor
         cameraExecutor.shutdown()
         displayManager.unregisterDisplayListener(displayListener)
+        // Unregister the broadcast receivers and listeners
+        broadcastManager.unregisterReceiver(volumeDownReceiver)
     }
 
     /** Initialize CameraX, and prepare to bind the camera use cases  */
@@ -190,7 +229,7 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
         try {
             // A variable number of use-cases can be passed here -
             // camera provides access to CameraControl & CameraInfo
-            cameraProvider?.bindToLifecycle(
+            camera = cameraProvider?.bindToLifecycle(
                 this, cameraSelector, preview, imageCapture, videoCapture
             ).also {
                 hasFlashUnit = it?.cameraInfo?.hasFlashUnit() ?: false
