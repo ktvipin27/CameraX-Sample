@@ -1,4 +1,4 @@
-package com.ktvipin.cameraxsample
+package com.ktvipin.cameraxsample.ui.custom
 
 import android.content.Context
 import android.graphics.Color
@@ -11,7 +11,9 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.ktvipin.cameraxsample.AnimationUtils.startBlinkAnimation
+import com.ktvipin.cameraxsample.R
+import com.ktvipin.cameraxsample.utils.AnimationUtils.startBlinkAnimation
+import com.ktvipin.cameraxsample.utils.px
 import java.util.concurrent.TimeUnit
 
 

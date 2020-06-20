@@ -1,4 +1,4 @@
-package com.ktvipin.cameraxsample
+package com.ktvipin.cameraxsample.ui.custom
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -13,11 +13,13 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.ktvipin.cameraxsample.AnimationUtils.startRotateAnimation
-import com.ktvipin.cameraxsample.AnimationUtils.startScaleAnimation
-import com.ktvipin.cameraxsample.Config.LONG_PRESS_DELAY_MILLIS
-import com.ktvipin.cameraxsample.Config.SCALE_DOWN
-import com.ktvipin.cameraxsample.Config.SCALE_UP
+import com.ktvipin.cameraxsample.R
+import com.ktvipin.cameraxsample.utils.AnimationUtils.startRotateAnimation
+import com.ktvipin.cameraxsample.utils.AnimationUtils.startScaleAnimation
+import com.ktvipin.cameraxsample.utils.Config.LONG_PRESS_DELAY_MILLIS
+import com.ktvipin.cameraxsample.utils.Config.SCALE_DOWN
+import com.ktvipin.cameraxsample.utils.Config.SCALE_UP
+import com.ktvipin.cameraxsample.utils.px
 
 
 /**
@@ -40,12 +42,14 @@ class ControlView : LinearLayout {
     }
 
     private var isVideoCapturing: Boolean = false
-    private var flashMode: FlashMode = FlashMode.FLASH_MODE_OFF
+    private var flashMode: FlashMode =
+        FlashMode.FLASH_MODE_OFF
     private var listener: Listener? = null
 
-    private val timerView = TimerView(context).apply {
-        layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-    }.also { addView(it) }
+    private val timerView = TimerView(context)
+        .apply {
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        }.also { addView(it) }
 
     private val layoutControls = LinearLayout(context).apply {
         layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
@@ -113,15 +117,18 @@ class ControlView : LinearLayout {
     private fun toggleFlash() {
         when (flashMode) {
             FlashMode.FLASH_MODE_AUTO -> {
-                flashMode = FlashMode.FLASH_MODE_OFF
+                flashMode =
+                    FlashMode.FLASH_MODE_OFF
                 ivFlash.setImageResource(R.drawable.ic_flash_off_white_20dp)
             }
             FlashMode.FLASH_MODE_ON -> {
-                flashMode = FlashMode.FLASH_MODE_AUTO
+                flashMode =
+                    FlashMode.FLASH_MODE_AUTO
                 ivFlash.setImageResource(R.drawable.ic_flash_auto_white_20dp)
             }
             FlashMode.FLASH_MODE_OFF -> {
-                flashMode = FlashMode.FLASH_MODE_ON
+                flashMode =
+                    FlashMode.FLASH_MODE_ON
                 ivFlash.setImageResource(R.drawable.ic_flash_on_white_20dp)
             }
         }

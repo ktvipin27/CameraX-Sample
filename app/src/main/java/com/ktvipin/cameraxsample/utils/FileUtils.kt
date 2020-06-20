@@ -1,10 +1,11 @@
-package com.ktvipin.cameraxsample
+package com.ktvipin.cameraxsample.utils
 
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import androidx.core.net.toFile
+import com.ktvipin.cameraxsample.R
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -14,7 +15,7 @@ import java.util.*
  */
 object FileUtils {
 
-    private fun getOutputDirectory(context: Context): File {
+    fun getOutputDirectory(context: Context): File {
         val appContext = context.applicationContext
         val mediaDir = context.externalMediaDirs.firstOrNull()?.let {
             File(it, appContext.resources.getString(R.string.app_name)).apply { mkdirs() }
@@ -23,10 +24,10 @@ object FileUtils {
             mediaDir else appContext.filesDir
     }
 
-    fun getFile(context: Context, fileExtension: String): File {
+    fun getFile(outputDirectory: File, fileExtension: String): File {
         val fileName = SimpleDateFormat(Config.FILENAME_FORMAT, Locale.US)
             .format(System.currentTimeMillis()) + fileExtension
-        return File(getOutputDirectory(context), fileName)
+        return File(outputDirectory, fileName)
     }
 
     fun scanFile(context: Context, savedUri: Uri) {

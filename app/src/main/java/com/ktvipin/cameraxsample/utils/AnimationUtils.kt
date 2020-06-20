@@ -1,4 +1,4 @@
-package com.ktvipin.cameraxsample
+package com.ktvipin.cameraxsample.utils
 
 import android.animation.Animator
 import android.animation.AnimatorSet

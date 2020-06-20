@@ -1,58 +1,125 @@
 package com.ktvipin.cameraxsample.ui.main
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.DisplayMetrics
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.camera.core.*
 import androidx.camera.core.impl.VideoCaptureConfig
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.ktvipin.cameraxsample.*
-import com.ktvipin.cameraxsample.FileUtils.getFile
-import com.ktvipin.cameraxsample.FileUtils.scanFile
 import com.ktvipin.cameraxsample.R
-import kotlinx.android.synthetic.main.main_fragment.*
+import com.ktvipin.cameraxsample.ui.custom.ControlView
+import com.ktvipin.cameraxsample.utils.FileUtils.getFile
+import com.ktvipin.cameraxsample.utils.FileUtils.getOutputDirectory
+import com.ktvipin.cameraxsample.utils.FileUtils.scanFile
+import com.ktvipin.cameraxsample.utils.aspectRatio
+import com.ktvipin.cameraxsample.utils.hasBackCamera
+import com.ktvipin.cameraxsample.utils.hasFrontCamera
+import com.ktvipin.cameraxsample.utils.toast
+import kotlinx.android.synthetic.main.camera_fragment.*
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class MainFragment : Fragment(), ControlView.Listener {
+class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener {
 
     companion object {
-        fun newInstance() = MainFragment()
+        fun newInstance() = CameraFragment()
     }
 
     /** Blocking camera operations are performed using this executor */
     private val cameraExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
+    private val displayManager by lazy {
+        requireContext().getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+    }
     private var cameraProvider: ProcessCameraProvider? = null
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private var flashMode: Int = ImageCapture.FLASH_MODE_OFF
     private var hasFlashUnit = false
+    private lateinit var outputDirectory: File
     private lateinit var imageCapture: ImageCapture
     private lateinit var videoCapture: VideoCapture
+    private var displayId: Int = -1
 
+    /**
+     * listener which is triggered after photo has been taken
+     *
+     * @property photoFile image file
+     */
+    inner class ImageSavedCallback(private val photoFile: File) :
+        ImageCapture.OnImageSavedCallback {
+        override fun onError(exc: ImageCaptureException) {
+            toast("Photo capture failed: ${exc.message}")
+        }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return inflater.inflate(R.layout.main_fragment, container, false)
+        override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+            val savedUri = output.savedUri ?: Uri.fromFile(photoFile)
+            toast("Photo capture succeeded: $savedUri")
+
+            scanFile(requireContext(), savedUri)
+        }
+    }
+
+    /**
+     * listener which is triggered after video has been taken
+     *
+     */
+    inner class VideoSavedCallback : VideoCapture.OnVideoSavedCallback {
+        override fun onVideoSaved(file: File) {
+            val savedUri = Uri.fromFile(file)
+            toast("Video capture succeeded: $savedUri")
+            scanFile(requireContext(), savedUri)
+        }
+
+        override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
+            toast("Video capture failed: ${cause?.message}")
+        }
+    }
+
+    /**
+     * We need a display listener for orientation changes that do not trigger a configuration
+     * change, for example if we choose to override config change in manifest or for 180-degree
+     * orientation changes.
+     */
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = Unit
+        override fun onDisplayRemoved(displayId: Int) = Unit
+
+        @SuppressLint("RestrictedApi")
+        override fun onDisplayChanged(displayId: Int) = previewView?.let { view ->
+            if (displayId == this@CameraFragment.displayId) {
+                //Log.d(TAG, "Rotation changed: ${view.display.rotation}")
+                imageCapture.targetRotation = view.display.rotation
+                videoCapture.setTargetRotation(view.display.rotation)
+            }
+        } ?: Unit
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        outputDirectory = getOutputDirectory(requireContext())
         previewView.post {
-            val displayId = previewView.display.displayId
+            displayId = previewView.display.displayId
             setUpCamera()
         }
 
         controlView.setListener(this)
+
+        // Every time the orientation of device changes, update rotation for use cases
+        displayManager.registerDisplayListener(displayListener, null)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Shut down our background executor
+        cameraExecutor.shutdown()
+        displayManager.unregisterDisplayListener(displayListener)
     }
 
     /** Initialize CameraX, and prepare to bind the camera use cases  */
@@ -88,33 +155,29 @@ class MainFragment : Fragment(), ControlView.Listener {
         val rotation = previewView.display.rotation
 
         // CameraSelector
-        val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+        val cameraSelector = CameraSelector.Builder()
+            .requireLensFacing(lensFacing)
+            .build()
 
         // Preview
         val preview = Preview.Builder()
-            // We request aspect ratio but no resolution
             .setTargetAspectRatio(screenAspectRatio)
-            // Set initial target rotation
             .setTargetRotation(rotation)
             .build()
 
         // ImageCapture
         imageCapture = ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-            // We request aspect ratio but no resolution to match preview config, but letting
-            // CameraX optimize for whatever specific resolution best fits our use cases
             .setTargetAspectRatio(screenAspectRatio)
-            // Set initial target rotation, we will have to call this again if rotation changes
-            // during the lifecycle of this use case
             .setTargetRotation(rotation)
             .setFlashMode(flashMode)
             .build()
 
         //Video Capture
-        videoCapture = VideoCaptureConfig.Builder().apply {
-            setTargetRotation(rotation)
-            setTargetAspectRatio(screenAspectRatio)
-        }.build()
+        videoCapture = VideoCaptureConfig.Builder()
+            .setTargetAspectRatio(screenAspectRatio)
+            .setTargetRotation(rotation)
+            .build()
 
         // Must unbind the use-cases before rebinding them
         cameraProvider?.unbindAll()
@@ -134,18 +197,13 @@ class MainFragment : Fragment(), ControlView.Listener {
         }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        // Shut down our background executor
-        cameraExecutor.shutdown()
-    }
-
     override fun toggleCamera() {
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT)
             CameraSelector.LENS_FACING_BACK
         else
             CameraSelector.LENS_FACING_FRONT
         bindCameraUseCases()
+
     }
 
     override fun toggleFlash(flashMode: ControlView.FlashMode) {
@@ -159,7 +217,7 @@ class MainFragment : Fragment(), ControlView.Listener {
 
     override fun capturePhoto() {
         // Create timestamped output file to hold the image
-        val photoFile = getFile(requireContext(), ".jpg")
+        val photoFile = getFile(outputDirectory, ".jpg")
 
         // Setup image capture metadata
         val metadata = ImageCapture.Metadata().apply {
@@ -170,52 +228,22 @@ class MainFragment : Fragment(), ControlView.Listener {
         // Create output options object which contains file + metadata
         val outputOptions = ImageCapture.OutputFileOptions
             .Builder(photoFile)
-            .apply {
-                setMetadata(metadata)
-            }.build()
+            .setMetadata(metadata)
+            .build()
 
-        // Setup image capture listener which is triggered after photo has been taken
-        val imageSavedCallback = object : ImageCapture.OnImageSavedCallback {
-            override fun onError(exc: ImageCaptureException) {
-                toast("Photo capture failed: ${exc.message}")
-            }
-
-            override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                val savedUri = output.savedUri ?: Uri.fromFile(photoFile)
-                toast("Photo capture succeeded: $savedUri")
-
-                scanFile(requireContext(), savedUri)
-            }
-        }
-
-        imageCapture.takePicture(outputOptions, cameraExecutor, imageSavedCallback)
+        imageCapture.takePicture(outputOptions, cameraExecutor, ImageSavedCallback(photoFile))
     }
 
     @SuppressLint("RestrictedApi")
     override fun startVideoCapturing() {
         // Create timestamped output file to hold the video
-        val videoFile = getFile(requireContext(), ".mp4")
-        videoCapture.startRecording(
-            videoFile,
-            cameraExecutor,
-            object : VideoCapture.OnVideoSavedCallback {
-                override fun onVideoSaved(file: File) {
-                    val savedUri = Uri.fromFile(file)
-                    toast("Video capture succeeded: $savedUri")
-                    scanFile(requireContext(), savedUri)
-                }
-
-                override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
-                    toast("Video capture failed: ${cause?.message}")
-                }
-
-            })
+        val videoFile = getFile(outputDirectory, ".mp4")
+        videoCapture.startRecording(videoFile, cameraExecutor, VideoSavedCallback())
     }
 
     @SuppressLint("RestrictedApi")
     override fun stopVideoCapturing() {
         videoCapture.stopRecording()
     }
-
 
 }

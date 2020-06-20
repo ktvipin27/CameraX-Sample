@@ -1,4 +1,4 @@
-package com.ktvipin.cameraxsample
+package com.ktvipin.cameraxsample.utils
 
 /**
  * Created by Vipin KT on 19/06/20

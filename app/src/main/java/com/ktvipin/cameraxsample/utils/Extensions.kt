@@ -1,4 +1,4 @@
-package com.ktvipin.cameraxsample
+package com.ktvipin.cameraxsample.utils
 
 import android.content.res.Resources
 import android.util.DisplayMetrics
@@ -6,8 +6,8 @@ import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.fragment.app.Fragment
-import com.ktvipin.cameraxsample.Config.RATIO_16_9_VALUE
-import com.ktvipin.cameraxsample.Config.RATIO_4_3_VALUE
+import com.ktvipin.cameraxsample.utils.Config.RATIO_16_9_VALUE
+import com.ktvipin.cameraxsample.utils.Config.RATIO_4_3_VALUE
 
 /**
  * Created by Vipin KT on 18/06/20
