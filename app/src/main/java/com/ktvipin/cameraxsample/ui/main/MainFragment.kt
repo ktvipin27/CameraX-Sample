@@ -1,28 +1,23 @@
 package com.ktvipin.cameraxsample.ui.main
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.MimeTypeMap
 import androidx.camera.core.*
 import androidx.camera.core.impl.VideoCaptureConfig
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import androidx.core.net.toFile
 import androidx.fragment.app.Fragment
 import com.ktvipin.cameraxsample.*
-import com.ktvipin.cameraxsample.Config.FILENAME_FORMAT
+import com.ktvipin.cameraxsample.FileUtils.getFile
+import com.ktvipin.cameraxsample.FileUtils.scanFile
 import com.ktvipin.cameraxsample.R
 import kotlinx.android.synthetic.main.main_fragment.*
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -38,7 +33,6 @@ class MainFragment : Fragment(), ControlView.Listener {
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private var flashMode: Int = ImageCapture.FLASH_MODE_OFF
     private var hasFlashUnit = false
-    private lateinit var outputDirectory: File
     private lateinit var imageCapture: ImageCapture
     private lateinit var videoCapture: VideoCapture
 
@@ -53,7 +47,6 @@ class MainFragment : Fragment(), ControlView.Listener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        outputDirectory = getOutputDirectory(requireContext())
         previewView.post {
             val displayId = previewView.display.displayId
             setUpCamera()
@@ -166,7 +159,7 @@ class MainFragment : Fragment(), ControlView.Listener {
 
     override fun capturePhoto() {
         // Create timestamped output file to hold the image
-        val photoFile = getFile(".jpg")
+        val photoFile = getFile(requireContext(), ".jpg")
 
         // Setup image capture metadata
         val metadata = ImageCapture.Metadata().apply {
@@ -191,47 +184,25 @@ class MainFragment : Fragment(), ControlView.Listener {
                 val savedUri = output.savedUri ?: Uri.fromFile(photoFile)
                 toast("Photo capture succeeded: $savedUri")
 
-                scanFile(savedUri)
+                scanFile(requireContext(), savedUri)
             }
         }
 
         imageCapture.takePicture(outputOptions, cameraExecutor, imageSavedCallback)
     }
 
-    private fun getFile(fileExtension: String): File {
-        val fileName = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
-            .format(System.currentTimeMillis()) + fileExtension
-        return File(outputDirectory, fileName)
-    }
-
-    private fun scanFile(savedUri: Uri) {
-        // If the folder selected is an external media directory, this is
-        // unnecessary but otherwise other apps will not be able to access our
-        // images unless we scan them using [MediaScannerConnection]
-        val mimeType = MimeTypeMap.getSingleton()
-            .getMimeTypeFromExtension(savedUri.toFile().extension)
-        MediaScannerConnection.scanFile(
-            context,
-            arrayOf(savedUri.toFile().absolutePath),
-            arrayOf(mimeType)
-        ) { _, uri ->
-            //Log.d(TAG, "Image capture scanned into media store: $uri")
-        }
-    }
-
     @SuppressLint("RestrictedApi")
     override fun startVideoCapturing() {
         // Create timestamped output file to hold the video
-        val videoFile = getFile(".mp4")
+        val videoFile = getFile(requireContext(), ".mp4")
         videoCapture.startRecording(
             videoFile,
             cameraExecutor,
             object : VideoCapture.OnVideoSavedCallback {
                 override fun onVideoSaved(file: File) {
                     val savedUri = Uri.fromFile(file)
-                    toast("Photo capture succeeded: $savedUri")
-
-                    scanFile(savedUri)
+                    toast("Video capture succeeded: $savedUri")
+                    scanFile(requireContext(), savedUri)
                 }
 
                 override fun onError(videoCaptureError: Int, message: String, cause: Throwable?) {
@@ -246,12 +217,5 @@ class MainFragment : Fragment(), ControlView.Listener {
         videoCapture.stopRecording()
     }
 
-    private fun getOutputDirectory(context: Context): File {
-        val appContext = context.applicationContext
-        val mediaDir = context.externalMediaDirs.firstOrNull()?.let {
-            File(it, appContext.resources.getString(R.string.app_name)).apply { mkdirs() }
-        }
-        return if (mediaDir != null && mediaDir.exists())
-            mediaDir else appContext.filesDir
-    }
+
 }
