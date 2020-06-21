@@ -10,4 +10,6 @@ object Config {
     const val LONG_PRESS_DELAY_MILLIS = 1000L
     const val SCALE_UP = 1.5f
     const val SCALE_DOWN = 1.0f
+    const val IMAGE_FILE_EXTENSION = ".jpg"
+    const val VIDEO_FILE_EXTENSION = ".mp4"
 }

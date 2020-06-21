@@ -1,29 +1,24 @@
 package com.ktvipin.cameraxsample.ui.main
 
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.DisplayMetrics
-import android.util.Log
-import android.view.KeyEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import androidx.camera.core.*
 import androidx.camera.core.impl.VideoCaptureConfig
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.fragment.findNavController
 import com.ktvipin.cameraxsample.R
-import com.ktvipin.cameraxsample.ui.KEY_EVENT_ACTION
-import com.ktvipin.cameraxsample.ui.KEY_EVENT_EXTRA
 import com.ktvipin.cameraxsample.ui.custom.ControlView
 import com.ktvipin.cameraxsample.ui.permission.PermissionFragment
+import com.ktvipin.cameraxsample.utils.Config.IMAGE_FILE_EXTENSION
+import com.ktvipin.cameraxsample.utils.Config.VIDEO_FILE_EXTENSION
 import com.ktvipin.cameraxsample.utils.FileUtils.getFile
 import com.ktvipin.cameraxsample.utils.FileUtils.getOutputDirectory
 import com.ktvipin.cameraxsample.utils.FileUtils.scanFile
@@ -38,20 +33,24 @@ import java.util.concurrent.Executors
 
 class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener {
 
-    /** Blocking camera operations are performed using this executor */
-    private lateinit var cameraExecutor: ExecutorService
     private val displayManager by lazy {
         requireContext().getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
     }
-    private var cameraProvider: ProcessCameraProvider? = null
-    private var lensFacing = CameraSelector.LENS_FACING_BACK
-    private var flashMode: Int = ImageCapture.FLASH_MODE_OFF
+    private val outputDirectory: File by lazy { getOutputDirectory(requireContext()) }
+
+    private var isFrontFacing = false
     private var hasFlashUnit = false
-    private lateinit var outputDirectory: File
-    private var camera: Camera? = null
+
+    private lateinit var cameraProvider: ProcessCameraProvider
     private lateinit var imageCapture: ImageCapture
     private lateinit var videoCapture: VideoCapture
-    private lateinit var broadcastManager: LocalBroadcastManager
+
+    /** Blocking camera operations are performed using this executor */
+    private lateinit var cameraExecutor: ExecutorService
+
+    private val rotation
+        get() = previewView.display.rotation
+    private val screenAspectRatio = DisplayMetrics().aspectRatio()
     private var displayId: Int = -1
 
     /**
@@ -61,28 +60,27 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
      */
     inner class ImageSavedCallback(private val photoFile: File) :
         ImageCapture.OnImageSavedCallback {
-        override fun onError(exc: ImageCaptureException) {
-            toast("Photo capture failed: ${exc.message}")
-        }
 
         override fun onImageSaved(output: ImageCapture.OutputFileResults) {
             val savedUri = output.savedUri ?: Uri.fromFile(photoFile)
-            toast("Photo capture succeeded: $savedUri")
             scanFile(requireContext(), savedUri)
 
             findNavController()
                 .navigate(CameraFragmentDirections.actionCameraFragmentToPreviewFragment(savedUri))
         }
+
+        override fun onError(exc: ImageCaptureException) {
+            toast("Photo capture failed: ${exc.message}")
+        }
     }
 
     /**
      * listener which is triggered after video has been taken
-     *
      */
     inner class VideoSavedCallback : VideoCapture.OnVideoSavedCallback {
+
         override fun onVideoSaved(file: File) {
             val savedUri = Uri.fromFile(file)
-            toast("Video capture succeeded: $savedUri")
             scanFile(requireContext(), savedUri)
 
             findNavController()
@@ -106,32 +104,19 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
         @SuppressLint("RestrictedApi")
         override fun onDisplayChanged(displayId: Int) = previewView?.let { view ->
             if (displayId == this@CameraFragment.displayId) {
-                //Log.d(TAG, "Rotation changed: ${view.display.rotation}")
                 imageCapture.targetRotation = view.display.rotation
                 videoCapture.setTargetRotation(view.display.rotation)
             }
         } ?: Unit
     }
 
-    /** Volume down button receiver used to trigger shutter */
-    private val volumeDownReceiver = object : BroadcastReceiver() {
-        private var linearZoom = 0f
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.getIntExtra(KEY_EVENT_EXTRA, KeyEvent.KEYCODE_UNKNOWN)) {
-                // When the volume down button is pressed, simulate a shutter button click
-                KeyEvent.KEYCODE_VOLUME_UP -> {
-                    if (linearZoom <= 0.9) {
-                        linearZoom += 0.1f
-                    }
-                    camera?.cameraControl?.setLinearZoom(linearZoom)
-                }
-                KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    if (linearZoom >= 0.1) {
-                        linearZoom -= 0.1f
-                    }
-                    camera?.cameraControl?.setLinearZoom(linearZoom)
-                }
-            }
+    inner class CameraGestureListener(private val camera: Camera) :
+        ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val currentZoomRatio: Float = camera.cameraInfo.zoomState.value?.zoomRatio ?: 0F
+            val delta = detector.scaleFactor
+            camera.cameraControl.setZoomRatio(currentZoomRatio * delta)
+            return true
         }
     }
 
@@ -141,144 +126,144 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
         // Initialize our background executor
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        outputDirectory = getOutputDirectory(requireContext())
+        ProcessCameraProvider
+            .getInstance(requireContext())
+            .apply {
+                addListener(Runnable {
+                    cameraProvider = get()
+                    isFrontFacing = !cameraProvider.hasBackCamera && cameraProvider.hasFrontCamera
+                    setupCamera()
+                }, ContextCompat.getMainExecutor(requireContext()))
+            }
+
         previewView.post {
             displayId = previewView.display.displayId
-            setUpCamera()
         }
 
         controlView.setListener(this)
 
         // Every time the orientation of device changes, update rotation for use cases
         displayManager.registerDisplayListener(displayListener, null)
+    }
 
-        broadcastManager = LocalBroadcastManager.getInstance(view.context)
-
-        // Set up the intent filter that will receive events from our main activity
-        val filter = IntentFilter().apply { addAction(KEY_EVENT_ACTION) }
-        broadcastManager.registerReceiver(volumeDownReceiver, filter)
+    override fun onResume() {
+        super.onResume()
+        if (!PermissionFragment.hasPermissions(requireContext()))
+            findNavController()
+                .navigate(CameraFragmentDirections.actionCameraFragmentToPermissionFragment())
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         // Shut down our background executor
         cameraExecutor.shutdown()
+        if (::cameraProvider.isInitialized) {
+            cameraProvider.unbindAll()
+        }
         displayManager.unregisterDisplayListener(displayListener)
-        // Unregister the broadcast receivers and listeners
-        broadcastManager.unregisterReceiver(volumeDownReceiver)
     }
 
-    override fun onResume() {
-        super.onResume()
-        Log.d("camerafrag", "onResumed")
-        if (!PermissionFragment.hasPermissions(requireContext())) {
-            findNavController().navigate(CameraFragmentDirections.actionCameraFragmentToPermissionFragment())
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupCamera() {
+        cameraProvider.apply {
+            // Must unbind the use-cases before rebinding them
+            unbindAll()
+
+            try {// Build and bind the camera use cases
+                bindToLifecycle(
+                    viewLifecycleOwner,
+                    buildCameraSelector(),
+                    buildPreviewUseCase(),
+                    buildImageCaptureUseCase(),
+                    buildVideoCaptureUseCase()
+                ).also {
+                    // setUpTapToFocus(it.cameraControl)
+                    hasFlashUnit = it.cameraInfo.hasFlashUnit()
+                    val scaleGestureDetector =
+                        ScaleGestureDetector(context, CameraGestureListener(it))
+                    previewView.setOnTouchListener { _, event ->
+                        scaleGestureDetector.onTouchEvent(event)
+                        return@setOnTouchListener true
+                    }
+                }
+                controlView.setFlashViewVisibility(hasFlashUnit)
+                controlView.setCameraSwitchVisibility(hasBackCamera && hasFrontCamera)
+
+            } catch (e: Exception) {
+                toast("Use case binding failed")
+            }
         }
     }
 
-    /** Initialize CameraX, and prepare to bind the camera use cases  */
-    private fun setUpCamera() {
-        cameraProvider = ProcessCameraProvider
-            .getInstance(requireContext())
-            .also {
-                it.addListener(Runnable {
-                    // Select lensFacing depending on the available cameras
-                    lensFacing = when {
-                        cameraProvider.hasBackCamera -> CameraSelector.LENS_FACING_BACK
-                        cameraProvider.hasFrontCamera -> CameraSelector.LENS_FACING_FRONT
-                        else -> throw IllegalStateException("Back and front camera are unavailable")
-                    }
-
-                    // Build and bind the camera use cases
-                    bindCameraUseCases()
-
-                    controlView.setFlashViewVisibility(hasFlashUnit)
-                    controlView.setCameraSwitchVisibility(cameraProvider.hasBackCamera && cameraProvider.hasFrontCamera)
-
-                }, ContextCompat.getMainExecutor(requireContext()))
-            }
-            .get()
-    }
-
-    /** Declare and bind preview, capture and analysis use cases */
-    @SuppressLint("RestrictedApi")
-    private fun bindCameraUseCases() {
-
-        // Get screen metrics used to setup camera for full screen resolution
-        val screenAspectRatio = DisplayMetrics().aspectRatio()
-        val rotation = previewView.display.rotation
-
-        // CameraSelector
-        val cameraSelector = CameraSelector.Builder()
+    private fun buildCameraSelector(): CameraSelector {
+        // Select lensFacing depending on the available cameras
+        val lensFacing = when {
+            isFrontFacing -> CameraSelector.LENS_FACING_FRONT
+            cameraProvider.hasBackCamera -> CameraSelector.LENS_FACING_BACK
+            cameraProvider.hasFrontCamera -> CameraSelector.LENS_FACING_FRONT
+            else -> throw IllegalStateException("Back and front camera are unavailable")
+        }
+        return CameraSelector.Builder()
             .requireLensFacing(lensFacing)
             .build()
+    }
 
-        // Preview
-        val preview = Preview.Builder()
+    private fun buildPreviewUseCase(): Preview {
+        return Preview.Builder()
             .setTargetAspectRatio(screenAspectRatio)
             .setTargetRotation(rotation)
             .build()
+            .apply {
+                // Attach the viewfinder's surface provider to preview use case
+                setSurfaceProvider(previewView.createSurfaceProvider())
+            }
+    }
 
-        // ImageCapture
-        imageCapture = ImageCapture.Builder()
+    private fun buildImageCaptureUseCase(): ImageCapture {
+        val flashMode = when (controlView.getFlashMode()) {
+            ControlView.FlashMode.FLASH_MODE_AUTO -> ImageCapture.FLASH_MODE_AUTO
+            ControlView.FlashMode.FLASH_MODE_ON -> ImageCapture.FLASH_MODE_ON
+            ControlView.FlashMode.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_OFF
+        }
+        return ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .setTargetAspectRatio(screenAspectRatio)
             .setTargetRotation(rotation)
             .setFlashMode(flashMode)
             .build()
+            .also {
+                imageCapture = it
+            }
+    }
 
-        //Video Capture
-        videoCapture = VideoCaptureConfig.Builder()
+    @SuppressLint("RestrictedApi")
+    private fun buildVideoCaptureUseCase(): VideoCapture {
+        return VideoCaptureConfig.Builder()
             .setTargetAspectRatio(screenAspectRatio)
             .setTargetRotation(rotation)
             .build()
-
-        // Must unbind the use-cases before rebinding them
-        cameraProvider?.unbindAll()
-
-        try {
-            // A variable number of use-cases can be passed here -
-            // camera provides access to CameraControl & CameraInfo
-            camera = cameraProvider?.bindToLifecycle(
-                this, cameraSelector, preview, imageCapture, videoCapture
-            ).also {
-                hasFlashUnit = it?.cameraInfo?.hasFlashUnit() ?: false
+            .also {
+                videoCapture = it
             }
-            // Attach the viewfinder's surface provider to preview use case
-            preview.setSurfaceProvider(previewView.createSurfaceProvider())
-        } catch (exc: Exception) {
-            toast("Use case binding failed")
-        }
     }
 
     override fun toggleCamera() {
-        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT)
-            CameraSelector.LENS_FACING_BACK
-        else
-            CameraSelector.LENS_FACING_FRONT
-        bindCameraUseCases()
-
+        isFrontFacing = isFrontFacing.not()
+        setupCamera()
     }
 
     override fun toggleFlash(flashMode: ControlView.FlashMode) {
-        this.flashMode = when (flashMode) {
-            ControlView.FlashMode.FLASH_MODE_AUTO -> ImageCapture.FLASH_MODE_AUTO
-            ControlView.FlashMode.FLASH_MODE_ON -> ImageCapture.FLASH_MODE_ON
-            ControlView.FlashMode.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_OFF
-        }
-        bindCameraUseCases()
+        setupCamera()
     }
 
     override fun capturePhoto() {
         // Create timestamped output file to hold the image
-        val photoFile = getFile(outputDirectory, ".jpg")
-
+        val photoFile = getFile(outputDirectory, IMAGE_FILE_EXTENSION)
         // Setup image capture metadata
         val metadata = ImageCapture.Metadata().apply {
             // Mirror image when using the front camera
-            isReversedHorizontal = lensFacing == CameraSelector.LENS_FACING_FRONT
+            isReversedHorizontal = isFrontFacing
         }
-
         // Create output options object which contains file + metadata
         val outputOptions = ImageCapture.OutputFileOptions
             .Builder(photoFile)
@@ -291,7 +276,7 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
     @SuppressLint("RestrictedApi")
     override fun startVideoCapturing() {
         // Create timestamped output file to hold the video
-        val videoFile = getFile(outputDirectory, ".mp4")
+        val videoFile = getFile(outputDirectory, VIDEO_FILE_EXTENSION)
         videoCapture.startRecording(videoFile, cameraExecutor, VideoSavedCallback())
         controlView.setCameraSwitchVisibility(false)
         controlView.setFlashViewVisibility(false)

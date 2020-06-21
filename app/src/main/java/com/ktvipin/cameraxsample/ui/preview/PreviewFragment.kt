@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.ktvipin.cameraxsample.R
+import com.ktvipin.cameraxsample.utils.Config.VIDEO_FILE_EXTENSION
 import kotlinx.android.synthetic.main.fragment_preview.*
 
 class PreviewFragment : Fragment(R.layout.fragment_preview) {
@@ -20,7 +21,7 @@ class PreviewFragment : Fragment(R.layout.fragment_preview) {
 
         btn_back.setOnClickListener { findNavController().popBackStack() }
         val mediaUri = args.mediaUri
-        if (mediaUri?.path?.endsWith(".mp4", true) == true) {
+        if (mediaUri?.path?.endsWith(VIDEO_FILE_EXTENSION, true) == true) {
             val mediaController = MediaController(requireContext())
             video_view.setMediaController(mediaController)
             video_view.setVideoURI(mediaUri)

@@ -24,7 +24,6 @@ object AnimationUtils {
             this, "scaleY", scaleY
         )
         scaleDownX.duration = 500
-        scaleDownY.duration = 500
         val scaleDown2 = AnimatorSet()
         scaleDown2.play(scaleDownX).with(scaleDownY)
         scaleDown2.start()
@@ -52,7 +51,7 @@ object AnimationUtils {
 
     fun View.startRotateAnimation() {
         ValueAnimator
-            .ofFloat(0f, 1f)
+            .ofFloat(0.0f, 1.0f)
             .apply {
                 duration = 500
                 addUpdateListener { pAnimation ->

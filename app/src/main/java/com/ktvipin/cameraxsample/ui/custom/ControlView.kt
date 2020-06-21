@@ -138,6 +138,8 @@ class ControlView : LinearLayout {
         listener?.toggleFlash(flashMode)
     }
 
+    fun getFlashMode() = flashMode
+
     @SuppressLint("ClickableViewAccessibility")
     private fun setupCaptureButtonListener(capture: ImageView) {
         var initialTouchX = 0f
