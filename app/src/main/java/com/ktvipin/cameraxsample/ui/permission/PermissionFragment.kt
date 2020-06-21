@@ -14,14 +14,13 @@ class PermissionFragment : Fragment() {
         super.onCreate(savedInstanceState)
 
         if (!hasPermissions(requireContext())) {
-            // Request camera-related permissions
             requestPermissions(
                 REQUIRED_PERMISSIONS,
                 REQUEST_CODE_PERMISSIONS
             )
         } else {
-            // If permissions have already been granted, proceed
-            findNavController().navigate(PermissionFragmentDirections.actionPermissionFragmentToCameraFragment())
+            findNavController()
+                .navigate(PermissionFragmentDirections.actionPermissionFragmentToCameraFragment())
         }
     }
 
@@ -30,20 +29,24 @@ class PermissionFragment : Fragment() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (PackageManager.PERMISSION_GRANTED == grantResults.firstOrNull()) {
-                findNavController().navigate(PermissionFragmentDirections.actionPermissionFragmentToCameraFragment())
+            val totalGranted = grantResults.count { PackageManager.PERMISSION_GRANTED == it }
+            if (totalGranted == grantResults.size) {
+                findNavController()
+                    .navigate(PermissionFragmentDirections.actionPermissionFragmentToCameraFragment())
             } else {
-                Toast.makeText(context, "Permissions request denied", Toast.LENGTH_LONG).show()
                 requestPermissions(
                     REQUIRED_PERMISSIONS,
                     REQUEST_CODE_PERMISSIONS
                 )
+                Toast.makeText(requireContext(), "Permission request denied", Toast.LENGTH_LONG)
+                    .show()
             }
         }
     }
 
     companion object {
-        private const val REQUEST_CODE_PERMISSIONS = 10
+        private const val REQUEST_CODE_PERMISSIONS = 101
+
         private val REQUIRED_PERMISSIONS = arrayOf(
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,

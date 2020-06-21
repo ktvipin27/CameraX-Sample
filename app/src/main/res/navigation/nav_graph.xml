@@ -15,8 +15,7 @@
             app:destination="@id/previewFragment" />
         <action
             android:id="@+id/action_cameraFragment_to_permissionFragment"
-            app:destination="@id/permissionFragment"
-            app:popUpToInclusive="true" />
+            app:destination="@id/permissionFragment" />
     </fragment>
     <fragment
         android:id="@+id/previewFragment"
@@ -35,6 +34,7 @@
         <action
             android:id="@+id/action_permissionFragment_to_cameraFragment"
             app:destination="@id/cameraFragment"
+            app:popUpTo="@id/cameraFragment"
             app:popUpToInclusive="true" />
     </fragment>
 </navigation>

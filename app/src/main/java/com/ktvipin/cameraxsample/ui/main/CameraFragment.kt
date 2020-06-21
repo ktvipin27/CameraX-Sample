@@ -9,6 +9,7 @@ import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import androidx.camera.core.*
@@ -169,7 +170,7 @@ class CameraFragment : Fragment(R.layout.camera_fragment), ControlView.Listener 
 
     override fun onResume() {
         super.onResume()
-
+        Log.d("camerafrag", "onResumed")
         if (!PermissionFragment.hasPermissions(requireContext())) {
             findNavController().navigate(CameraFragmentDirections.actionCameraFragmentToPermissionFragment())
         }
