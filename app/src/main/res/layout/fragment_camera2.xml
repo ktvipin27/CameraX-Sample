@@ -5,10 +5,10 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.camera.CameraFragment">
+    tools:context=".ui.camera.Camera2Fragment">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/previewView"
+    <androidx.camera.view.CameraView
+        android:id="@+id/cameraView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:keepScreenOn="true"

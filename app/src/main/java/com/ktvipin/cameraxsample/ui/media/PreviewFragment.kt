@@ -1,4 +1,4 @@
-package com.ktvipin.cameraxsample.ui.preview
+package com.ktvipin.cameraxsample.ui.media
 
 import android.os.Bundle
 import android.view.View

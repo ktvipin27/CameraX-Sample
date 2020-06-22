@@ -3,11 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/cameraFragment">
+    app:startDestination="@id/camera2Fragment">
 
     <fragment
         android:id="@+id/cameraFragment"
-        android:name="com.ktvipin.cameraxsample.ui.main.CameraFragment"
+        android:name="com.ktvipin.cameraxsample.ui.camera.CameraFragment"
         android:label="camera_fragment"
         tools:layout="@layout/camera_fragment">
         <action
@@ -19,7 +19,7 @@
     </fragment>
     <fragment
         android:id="@+id/previewFragment"
-        android:name="com.ktvipin.cameraxsample.ui.preview.PreviewFragment"
+        android:name="com.ktvipin.cameraxsample.ui.media.PreviewFragment"
         android:label="fragment_preview"
         tools:layout="@layout/fragment_preview">
         <argument
@@ -33,8 +33,20 @@
         android:label="PermissionFragment">
         <action
             android:id="@+id/action_permissionFragment_to_cameraFragment"
-            app:destination="@id/cameraFragment"
-            app:popUpTo="@id/cameraFragment"
+            app:destination="@id/camera2Fragment"
+            app:popUpTo="@id/camera2Fragment"
             app:popUpToInclusive="true" />
+    </fragment>
+    <fragment
+        android:id="@+id/camera2Fragment"
+        android:name="com.ktvipin.cameraxsample.ui.camera.Camera2Fragment"
+        android:label="fragment_camera2"
+        tools:layout="@layout/fragment_camera2">
+        <action
+            android:id="@+id/action_camera2Fragment_to_previewFragment"
+            app:destination="@id/previewFragment" />
+        <action
+            android:id="@+id/action_camera2Fragment_to_permissionFragment"
+            app:destination="@id/permissionFragment" />
     </fragment>
 </navigation>

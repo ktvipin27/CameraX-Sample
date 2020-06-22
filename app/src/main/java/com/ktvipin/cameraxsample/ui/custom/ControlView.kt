@@ -66,7 +66,6 @@ class ControlView : LinearLayout {
         }
         setOnClickListener { toggleFlash() }
         setPadding(12.px, 12.px, 12.px, 12.px)
-        visibility = View.INVISIBLE
     }.also { layoutControls.addView(it) }
 
     private val ivCapture = ImageView(context).apply {
@@ -90,7 +89,6 @@ class ControlView : LinearLayout {
                 listener?.toggleCamera()
             }
             setPadding(12.px, 12.px, 12.px, 12.px)
-            visibility = View.INVISIBLE
         }
     }.also { layoutControls.addView(it) }
 

@@ -1,4 +1,4 @@
-package com.ktvipin.cameraxsample.ui.main
+package com.ktvipin.cameraxsample.ui.camera
 
 import android.annotation.SuppressLint
 import android.content.Context
