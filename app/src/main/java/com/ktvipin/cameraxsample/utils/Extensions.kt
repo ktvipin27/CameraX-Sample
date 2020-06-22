@@ -20,7 +20,6 @@ val Int.dp: Int
 val Int.px: Int
     get() = (this * Resources.getSystem().displayMetrics.density).toInt()
 
-
 /** Returns true if the device has an available back camera. False otherwise */
 val ProcessCameraProvider?.hasBackCamera: Boolean
     get() = this?.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) ?: false
@@ -58,7 +57,7 @@ fun Fragment.toast(message: String) {
         Toast.makeText(
             requireContext(),
             message,
-            Toast.LENGTH_SHORT
+            Toast.LENGTH_LONG
         ).show()
     }
 }

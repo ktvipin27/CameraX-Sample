@@ -50,8 +50,10 @@ object AnimationUtils {
     }
 
     fun View.startRotateAnimation() {
+        val start = if (rotationY == 0f || rotationY == 360f) 0f else 1f
+        val end = if (rotationY == 0f || rotationY == 360f) 1f else 0f
         ValueAnimator
-            .ofFloat(0.0f, 1.0f)
+            .ofFloat(start, end)
             .apply {
                 duration = 500
                 addUpdateListener { pAnimation ->
