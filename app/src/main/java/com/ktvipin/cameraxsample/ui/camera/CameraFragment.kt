@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.VideoCapture
@@ -97,8 +98,13 @@ class CameraFragment : Fragment(R.layout.fragment_camera), ControlView.Listener 
 
     override fun capturePhoto() {
         val photoFile = FileUtils.getFile(outputDirectory, Config.IMAGE_FILE_EXTENSION)
+        val metadata = ImageCapture.Metadata().apply {
+            // Mirror image when using the front camera
+            isReversedHorizontal = cameraView.cameraLensFacing == CameraSelector.LENS_FACING_FRONT
+        }
         val outputOptions = ImageCapture.OutputFileOptions
             .Builder(photoFile)
+            .setMetadata(metadata)
             .build()
         cameraView.takePicture(outputOptions, cameraExecutor, ImageSavedCallback(photoFile))
     }
