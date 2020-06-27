@@ -19,8 +19,7 @@ class PermissionFragment : Fragment() {
                 REQUEST_CODE_PERMISSIONS
             )
         } else {
-            findNavController()
-                .navigate(PermissionFragmentDirections.actionPermissionFragmentToCameraFragment())
+            findNavController().popBackStack()
         }
     }
 
@@ -31,8 +30,7 @@ class PermissionFragment : Fragment() {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             val totalGranted = grantResults.count { PackageManager.PERMISSION_GRANTED == it }
             if (totalGranted == grantResults.size) {
-                findNavController()
-                    .navigate(PermissionFragmentDirections.actionPermissionFragmentToCameraFragment())
+                findNavController().popBackStack()
             } else {
                 requestPermissions(
                     REQUIRED_PERMISSIONS,

@@ -6,16 +6,31 @@
     app:startDestination="@id/cameraFragment">
 
     <fragment
+        android:id="@+id/permissionFragment"
+        android:name="com.ktvipin.cameraxsample.ui.permission.PermissionFragment"
+        android:label="PermissionFragment" />
+
+    <fragment
+        android:id="@+id/mediaViewerFragment"
+        android:name="com.ktvipin.cameraxsample.ui.media.MediaViewerFragment"
+        android:label="fragment_media_viewer"
+        tools:layout="@layout/fragment_media_viewer">
+        <argument
+            android:name="mediaUri"
+            app:argType="android.net.Uri" />
+    </fragment>
+
+    <fragment
         android:id="@+id/cameraFragment"
         android:name="com.ktvipin.cameraxsample.ui.camera.CameraFragment"
         android:label="fragment_camera"
         tools:layout="@layout/fragment_camera">
         <action
-            android:id="@+id/action_cameraFragment_to_mediaViewerFragment"
-            app:destination="@id/mediaViewerFragment" />
-        <action
             android:id="@+id/action_cameraFragment_to_permissionFragment"
             app:destination="@id/permissionFragment" />
+        <action
+            android:id="@+id/action_cameraFragment_to_mediaViewerFragment"
+            app:destination="@id/mediaViewerFragment" />
     </fragment>
 
     <fragment
@@ -29,32 +44,6 @@
         <action
             android:id="@+id/action_previewFragment_to_permissionFragment"
             app:destination="@id/permissionFragment" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/mediaViewerFragment"
-        android:name="com.ktvipin.cameraxsample.ui.media.MediaViewerFragment"
-        android:label="fragment_media_viewer"
-        tools:layout="@layout/fragment_media_viewer">
-        <argument
-            android:name="mediaUri"
-            app:argType="android.net.Uri" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/permissionFragment"
-        android:name="com.ktvipin.cameraxsample.ui.permission.PermissionFragment"
-        android:label="PermissionFragment">
-        <action
-            android:id="@+id/action_permissionFragment_to_cameraFragment"
-            app:destination="@id/cameraFragment"
-            app:popUpTo="@id/cameraFragment"
-            app:popUpToInclusive="true" />
-        <action
-            android:id="@+id/action_permissionFragment_to_previewFragment"
-            app:destination="@id/previewFragment"
-            app:popUpTo="@id/previewFragment"
-            app:popUpToInclusive="true" />
     </fragment>
 
 </navigation>
