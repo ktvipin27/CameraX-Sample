@@ -10,6 +10,7 @@ import androidx.camera.view.CameraView
 import androidx.fragment.app.Fragment
 import com.ktvipin.cameraxsample.utils.Config.RATIO_16_9_VALUE
 import com.ktvipin.cameraxsample.utils.Config.RATIO_4_3_VALUE
+import java.util.concurrent.TimeUnit
 
 /**
  * Created by Vipin KT on 18/06/20
@@ -60,6 +61,17 @@ fun Fragment.toast(message: String) {
             Toast.LENGTH_LONG
         ).show()
     }
+}
+
+fun Long.toDuration(): String {
+    return String.format("%02d", TimeUnit.MILLISECONDS.toMinutes(this)).plus(
+        ":" + String.format(
+            "%02d",
+            TimeUnit.MILLISECONDS.toSeconds(this) - TimeUnit.MINUTES.toSeconds(
+                TimeUnit.MILLISECONDS.toMinutes(this)
+            )
+        )
+    )
 }
 
 

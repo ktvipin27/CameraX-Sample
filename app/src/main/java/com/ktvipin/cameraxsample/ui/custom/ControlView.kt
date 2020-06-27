@@ -10,9 +10,10 @@ import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import android.widget.ImageView
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.setPadding
 import com.ktvipin.cameraxsample.R
 import com.ktvipin.cameraxsample.utils.AnimationUtils.startRotateAnimation
 import com.ktvipin.cameraxsample.utils.AnimationUtils.startScaleAnimation
@@ -41,9 +42,8 @@ class ControlView : LinearLayout {
         FLASH_MODE_OFF
     }
 
-    private var isVideoCapturing: Boolean = false
-    private var flashMode: FlashMode =
-        FlashMode.FLASH_MODE_OFF
+    private var isLongPressed: Boolean = false
+    private var flashMode: FlashMode = FlashMode.FLASH_MODE_OFF
     private var listener: Listener? = null
 
     private val timerView = TimerView(context)
@@ -55,52 +55,64 @@ class ControlView : LinearLayout {
     private val layoutControls = LinearLayout(context).apply {
         layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
             orientation = HORIZONTAL
-            setMargins(leftMargin, 5.px, rightMargin, bottomMargin)
+            topMargin = 5.px
         }
     }.also { addView(it) }
 
-    private val ivFlash = ImageView(context).apply {
+    private val ivFlash = ImageButton(context).apply {
         layoutParams = LayoutParams(48.px, 48.px).apply {
-            setImageResource(R.drawable.ic_flash_off_white_20dp)
             gravity = Gravity.CENTER
         }
+        setImageResource(R.drawable.ic_baseline_flash_off_24)
+        setBackgroundColor(Color.TRANSPARENT)
         setOnClickListener { toggleFlash() }
-        setPadding(12.px, 12.px, 12.px, 12.px)
     }.also { layoutControls.addView(it) }
 
-    private val ivCapture = ImageView(context).apply {
+    private val ivCapture = ImageButton(context).apply {
         layoutParams = LayoutParams(70.px, 70.px).apply {
-            setImageResource(R.drawable.ic_circle_line_white_24dp)
             setMargins(70.px, 20.px, 70.px, 20.px)
             gravity = Gravity.CENTER
         }
+        setImageResource(R.drawable.ic_circle_line_white_70)
+        setBackgroundColor(Color.TRANSPARENT)
     }.also {
         isHapticFeedbackEnabled = true
-        setupCaptureButtonListener(it)
         layoutControls.addView(it)
     }
 
-    private val ivSwitchCam = ImageView(context).apply {
+    private val ivSwitchCam = ImageButton(context).apply {
         layoutParams = LayoutParams(48.px, 48.px).apply {
-            setImageResource(R.drawable.ic_baseline_flip_camera_24dp)
             gravity = Gravity.CENTER
-            setOnClickListener {
-                it.startRotateAnimation()
-                listener?.toggleCamera()
-            }
-            setPadding(12.px, 12.px, 12.px, 12.px)
+        }
+        setImageResource(R.drawable.ic_baseline_flip_camera_24)
+        setBackgroundColor(Color.TRANSPARENT)
+        setOnClickListener {
+            it.startRotateAnimation()
+            listener?.toggleCamera()
         }
     }.also { layoutControls.addView(it) }
 
     private val tvInfo = TextView(context).apply {
         layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            setMargins(leftMargin, 5.px, rightMargin, bottomMargin)
-            text = "Hold for Video, tap for Photo"
+            topMargin = 5.px
         }
+        setTextColor(Color.WHITE)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        text = "Hold for Video, tap for Photo"
     }.also { addView(it) }
+
+    var flashVisibility: Boolean = true
+        set(value) {
+            field = value
+            ivFlash.visibility = if (value) View.VISIBLE else View.INVISIBLE
+        }
+
+    var cameraToggleVisibility: Boolean = true
+        set(value) {
+            field = value
+            ivSwitchCam.visibility = if (value) View.VISIBLE else View.INVISIBLE
+        }
 
     constructor(context: Context) : this(context, null)
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
@@ -109,10 +121,15 @@ class ControlView : LinearLayout {
         attrs,
         defStyleAttr
     ) {
-        setPadding(16.px, 16.px, 16.px, 16.px)
+        setPadding(16.px)
         setBackgroundColor(Color.TRANSPARENT)
         gravity = Gravity.CENTER
         orientation = VERTICAL
+        setupCaptureButtonListener()
+    }
+
+    fun setListener(listener: Listener?) {
+        this.listener = listener
     }
 
     private fun toggleFlash() {
@@ -120,17 +137,17 @@ class ControlView : LinearLayout {
             FlashMode.FLASH_MODE_AUTO -> {
                 flashMode =
                     FlashMode.FLASH_MODE_OFF
-                ivFlash.setImageResource(R.drawable.ic_flash_off_white_20dp)
+                ivFlash.setImageResource(R.drawable.ic_baseline_flash_off_24)
             }
             FlashMode.FLASH_MODE_ON -> {
                 flashMode =
                     FlashMode.FLASH_MODE_AUTO
-                ivFlash.setImageResource(R.drawable.ic_flash_auto_white_20dp)
+                ivFlash.setImageResource(R.drawable.ic_baseline_flash_auto_24)
             }
             FlashMode.FLASH_MODE_OFF -> {
                 flashMode =
                     FlashMode.FLASH_MODE_ON
-                ivFlash.setImageResource(R.drawable.ic_flash_on_white_20dp)
+                ivFlash.setImageResource(R.drawable.ic_baseline_flash_on_24)
             }
         }
         listener?.toggleFlash(flashMode)
@@ -139,21 +156,24 @@ class ControlView : LinearLayout {
     fun getFlashMode() = flashMode
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun setupCaptureButtonListener(capture: ImageView) {
+    private fun setupCaptureButtonListener() {
         var initialTouchX = 0f
         var initialTouchY = 0f
         val mHandler = Handler()
         val mLongPressed = Runnable {
-            onLongPressCaptureButton()
+            isLongPressed = true
+            ivCapture.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            timerView.startTimer()
+            listener?.startVideoCapturing()
         }
-        capture.setOnTouchListener { v, event ->
+        ivCapture.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     mHandler.postDelayed(
                         mLongPressed,
                         LONG_PRESS_DELAY_MILLIS
                     )
-                    capture.setImageResource(R.drawable.ic_circle_red_white_24dp)
+                    ivCapture.setImageResource(R.drawable.ic_circle_red_white_70)
                     v.startScaleAnimation(
                         SCALE_UP,
                         SCALE_UP
@@ -166,19 +186,21 @@ class ControlView : LinearLayout {
                     timerView.stopTimer()
                     mHandler.removeCallbacks(mLongPressed)
                     v.startScaleAnimation(SCALE_DOWN, SCALE_DOWN) {
-                        capture.setImageResource(R.drawable.ic_circle_line_white_24dp)
+                        ivCapture.setImageResource(R.drawable.ic_circle_line_white_70)
                     }
                     val xDiff = initialTouchX - event.rawX
                     val yDiff = initialTouchY - event.rawY
                     if ((kotlin.math.abs(xDiff) < 5) && (kotlin.math.abs(yDiff) < 5)) {
-                        if (isVideoCapturing) {
-                            isVideoCapturing = false
+                        if (isLongPressed) {
+                            isLongPressed = false
+                            ivCapture.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                             listener?.stopVideoCapturing()
                         } else {
                             listener?.capturePhoto()
                         }
                     } else {
-                        isVideoCapturing = false
+                        isLongPressed = false
+                        ivCapture.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         listener?.stopVideoCapturing()
                     }
                     v.performClick()
@@ -189,24 +211,5 @@ class ControlView : LinearLayout {
                 }
             }
         }
-    }
-
-    private fun onLongPressCaptureButton() {
-        ivCapture.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-        isVideoCapturing = true
-        listener?.startVideoCapturing()
-        timerView.startTimer()
-    }
-
-    fun setFlashViewVisibility(visibility: Boolean) {
-        ivFlash.visibility = if (visibility) View.VISIBLE else View.INVISIBLE
-    }
-
-    fun setCameraSwitchVisibility(visibility: Boolean) {
-        ivSwitchCam.visibility = if (visibility) View.VISIBLE else View.INVISIBLE
-    }
-
-    fun setListener(listener: Listener?) {
-        this.listener = listener
     }
 }

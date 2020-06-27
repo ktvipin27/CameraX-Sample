@@ -14,7 +14,7 @@ import android.widget.TextView
 import com.ktvipin.cameraxsample.R
 import com.ktvipin.cameraxsample.utils.AnimationUtils.startBlinkAnimation
 import com.ktvipin.cameraxsample.utils.px
-import java.util.concurrent.TimeUnit
+import com.ktvipin.cameraxsample.utils.toDuration
 
 
 /**
@@ -26,14 +26,14 @@ class TimerView : LinearLayout {
     private var timerHandler = Handler()
     private val timerThread = object : Runnable {
         override fun run() {
-            tvTimer.text = calculateDuration(SystemClock.uptimeMillis() - startTime)
+            tvTimer.text = (SystemClock.uptimeMillis() - startTime).toDuration()
             timerHandler.postDelayed(this, 0)
         }
     }
 
     private val ivRedDot = ImageView(context).apply {
         layoutParams = LayoutParams(6.px, 6.px).apply {
-            setImageResource(R.drawable.ic_red_dot_6dp)
+            setImageResource(R.drawable.ic_red_dot_8)
             setMargins(leftMargin, topMargin, 5.px, bottomMargin)
             gravity = Gravity.CENTER
         }
@@ -73,16 +73,5 @@ class TimerView : LinearLayout {
         ivRedDot.clearAnimation()
         visibility = View.INVISIBLE
         tvTimer.text = "00:00"
-    }
-
-    private fun calculateDuration(timeInMilliseconds: Long): String {
-        return String.format("%02d", TimeUnit.MILLISECONDS.toMinutes(timeInMilliseconds)).plus(
-            ":" + String.format(
-                "%02d",
-                TimeUnit.MILLISECONDS.toSeconds(timeInMilliseconds) - TimeUnit.MINUTES.toSeconds(
-                    TimeUnit.MILLISECONDS.toMinutes(timeInMilliseconds)
-                )
-            )
-        )
     }
 }

@@ -7,7 +7,7 @@
     tools:context=".ui.media.MediaViewerFragment">
 
     <androidx.appcompat.widget.AppCompatImageView
-        android:id="@+id/photo_view"
+        android:id="@+id/photoView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:adjustViewBounds="true"
@@ -17,7 +17,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <VideoView
-        android:id="@+id/video_view"
+        android:id="@+id/videoView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:keepScreenOn="true"
@@ -27,14 +27,14 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.appcompat.widget.AppCompatImageView
-        android:id="@+id/btn_back"
+        android:id="@+id/btnBack"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="32dp"
         android:background="@android:color/transparent"
         android:padding="8dp"
-        android:src="@drawable/ic_baseline_arrow_back_24dp"
+        android:src="@drawable/ic_baseline_arrow_back_24"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 

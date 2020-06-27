@@ -70,6 +70,7 @@ class CameraFragment : Fragment(R.layout.fragment_camera), ControlView.Listener 
         cameraView.bindToLifecycle(viewLifecycleOwner)
         cameraView.captureMode = CameraView.CaptureMode.MIXED
         controlView.setListener(this)
+        controlView.cameraToggleVisibility = cameraView.hasBackCamera && cameraView.hasFrontCamera
     }
 
     override fun onResume() {
@@ -112,13 +113,13 @@ class CameraFragment : Fragment(R.layout.fragment_camera), ControlView.Listener 
     override fun startVideoCapturing() {
         val videoFile = FileUtils.getFile(outputDirectory, Config.VIDEO_FILE_EXTENSION)
         cameraView.startRecording(videoFile, cameraExecutor, videoSavedCallback)
-        controlView.setCameraSwitchVisibility(false)
-        controlView.setFlashViewVisibility(false)
+        controlView.flashVisibility = false
+        controlView.cameraToggleVisibility = false
     }
 
     override fun stopVideoCapturing() {
         cameraView.stopRecording()
-        controlView.setFlashViewVisibility(true)
-        controlView.setCameraSwitchVisibility(cameraView.hasBackCamera && cameraView.hasFrontCamera)
+        controlView.flashVisibility = true
+        controlView.cameraToggleVisibility = cameraView.hasBackCamera && cameraView.hasFrontCamera
     }
 }

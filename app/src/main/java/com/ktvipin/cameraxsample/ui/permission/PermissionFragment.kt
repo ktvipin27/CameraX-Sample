@@ -4,10 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.ktvipin.cameraxsample.utils.toast
 
 class PermissionFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,8 +38,7 @@ class PermissionFragment : Fragment() {
                     REQUIRED_PERMISSIONS,
                     REQUEST_CODE_PERMISSIONS
                 )
-                Toast.makeText(requireContext(), "Permission request denied", Toast.LENGTH_LONG)
-                    .show()
+                toast("Permission request denied")
             }
         }
     }

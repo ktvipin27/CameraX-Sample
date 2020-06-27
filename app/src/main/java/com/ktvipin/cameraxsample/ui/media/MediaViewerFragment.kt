@@ -19,20 +19,20 @@ class MediaViewerFragment : Fragment(R.layout.fragment_media_viewer) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        btn_back.setOnClickListener { findNavController().popBackStack() }
+        btnBack.setOnClickListener { findNavController().popBackStack() }
 
         val mediaUri = args.mediaUri
         if (mediaUri.path?.endsWith(VIDEO_FILE_EXTENSION, true) == true) {
             val mediaController = MediaController(requireContext())
-            video_view.setMediaController(mediaController)
-            video_view.setVideoURI(mediaUri)
-            video_view.seekTo(1)
-            video_view.visibility = VISIBLE
-            photo_view.visibility = GONE
+            videoView.setMediaController(mediaController)
+            videoView.setVideoURI(mediaUri)
+            videoView.seekTo(1)
+            videoView.visibility = VISIBLE
+            photoView.visibility = GONE
         } else {
-            photo_view.setImageURI(mediaUri)
-            photo_view.visibility = VISIBLE
-            video_view.visibility = GONE
+            photoView.setImageURI(mediaUri)
+            photoView.visibility = VISIBLE
+            videoView.visibility = GONE
         }
     }
 }

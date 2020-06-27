@@ -194,8 +194,8 @@ class PreviewFragment : Fragment(R.layout.fragment_preview), ControlView.Listene
                         return@setOnTouchListener true
                     }
                 }
-                controlView.setFlashViewVisibility(hasFlashUnit)
-                controlView.setCameraSwitchVisibility(hasBackCamera && hasFrontCamera)
+                controlView.flashVisibility = hasFlashUnit
+                controlView.cameraToggleVisibility = hasBackCamera && hasFrontCamera
 
             } catch (e: Exception) {
                 toast("Use case binding failed")
@@ -286,15 +286,16 @@ class PreviewFragment : Fragment(R.layout.fragment_preview), ControlView.Listene
         // Create timestamped output file to hold the video
         val videoFile = getFile(outputDirectory, VIDEO_FILE_EXTENSION)
         videoCapture.startRecording(videoFile, cameraExecutor, VideoSavedCallback())
-        controlView.setCameraSwitchVisibility(false)
-        controlView.setFlashViewVisibility(false)
+        controlView.cameraToggleVisibility = false
+        controlView.flashVisibility = false
     }
 
     @SuppressLint("RestrictedApi")
     override fun stopVideoCapturing() {
         videoCapture.stopRecording()
-        controlView.setFlashViewVisibility(hasFlashUnit)
-        controlView.setCameraSwitchVisibility(cameraProvider.hasBackCamera && cameraProvider.hasFrontCamera)
+        controlView.flashVisibility = hasFlashUnit
+        controlView.cameraToggleVisibility =
+            cameraProvider.hasBackCamera && cameraProvider.hasFrontCamera
     }
 
 }
